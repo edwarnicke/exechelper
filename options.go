@@ -47,6 +47,16 @@ func WithContext(ctx context.Context) *Option {
 	return &Option{Context: ctx}
 }
 
+// WithArgs - appends additional args to cmdStr
+//            useful for ensuring correctness when you start from
+//            args []string rather than from a cmdStr to be parsed
+func WithArgs(args ...string) *Option {
+	return CmdOption(func(cmd *exec.Cmd) error {
+		cmd.Args = append(cmd.Args, args...)
+		return nil
+	})
+}
+
 // WithDir - Option that will create the requested dir if it does not exist and set exec.Prepare.Dir = dir
 func WithDir(dir string) *Option {
 	return CmdOption(func(cmd *exec.Cmd) error {
