@@ -93,6 +93,25 @@ func TestWithStdin(t *testing.T) {
 	assert.Equal(t, testStr, strings.TrimSpace(string(b)))
 }
 
+func TestWithStdout(t *testing.T) {
+	buffer := bytes.NewBuffer([]byte{})
+	output, err := exechelper.Output("ls", exechelper.WithStdout(buffer))
+	assert.NoError(t, err)
+	assert.Equal(t, string(output), buffer.String())
+}
+
+func TestWithStderr(t *testing.T) {
+	buffer1 := bytes.NewBuffer([]byte{})
+	buffer2 := bytes.NewBuffer([]byte{})
+	err := exechelper.Run("ls fdhdhdhahdr",
+		exechelper.WithStderr(buffer1),
+		exechelper.WithStderr(buffer2),
+	)
+	assert.Error(t, err)
+	assert.True(t, buffer1.Len() > 0)
+	assert.Equal(t, buffer1.String(), buffer2.String())
+}
+
 func TestWithEnvMap(t *testing.T) {
 	// Try one
 	key1 := "key1"

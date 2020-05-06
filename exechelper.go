@@ -25,12 +25,12 @@ import (
 	"github.com/google/shlex"
 )
 
-// Run - Creates a exec.Prepare using cmdStr.  Runs exec.Prepare.Run and returns the resulting error
+// Run - Creates a exec.Cmd using cmdStr.  Runs exec.Cmd.Run and returns the resulting error
 func Run(cmdStr string, options ...*Option) error {
 	return <-Start(cmdStr, options...)
 }
 
-// Start - Creates an exec.Prepare cmdStr.  Runs exec.Prepare.Start.
+// Start - Creates an exec.Cmd cmdStr.  Runs exec.Cmd.Start.
 func Start(cmdStr string, options ...*Option) <-chan error {
 	errCh := make(chan error, 1)
 
@@ -87,7 +87,7 @@ func Start(cmdStr string, options ...*Option) <-chan error {
 	return errCh
 }
 
-// Output - Creates a exec.Prepare using cmdStr.  Runs exec.Prepare.Output and returns the resulting output as []byte and error
+// Output - Creates a exec.Cmd using cmdStr.  Runs exec.Cmd.Output and returns the resulting output as []byte and error
 func Output(cmdStr string, options ...*Option) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 	options = append(options, WithStdout(buffer))
@@ -97,7 +97,7 @@ func Output(cmdStr string, options ...*Option) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-// CombinedOutput - Creates a exec.Prepare using cmdStr.  Runs exec.Prepare.CombinedOutput and returns the resulting output as []byte and error
+// CombinedOutput - Creates a exec.Cmd using cmdStr.  Runs exec.Cmd.CombinedOutput and returns the resulting output as []byte and error
 func CombinedOutput(cmdStr string, options ...*Option) ([]byte, error) {
 	buffer := bytes.NewBuffer([]byte{})
 	options = append(options, WithStdout(buffer), WithStderr(buffer))
