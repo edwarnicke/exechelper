@@ -75,6 +75,16 @@ func TestCmdOptionErr(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestWithArgs(t *testing.T) {
+	output, err := exechelper.Output("echo", exechelper.WithArgs("foo"))
+	assert.NoError(t, err)
+	assert.Equal(t, "foo", strings.TrimSpace(string(output)))
+
+	output, err = exechelper.Output("echo", exechelper.WithArgs("foo", "bar"))
+	assert.NoError(t, err)
+	assert.Equal(t, "foo bar", strings.TrimSpace(string(output)))
+}
+
 func TestWithStdin(t *testing.T) {
 	testStr := "hello world"
 	bufferIn := bytes.NewBuffer([]byte(testStr))
