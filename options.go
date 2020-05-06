@@ -57,7 +57,7 @@ func WithArgs(args ...string) *Option {
 	})
 }
 
-// WithDir - Option that will create the requested dir if it does not exist and set exec.Prepare.Dir = dir
+// WithDir - Option that will create the requested dir if it does not exist and set exec.Cmd.Dir = dir
 func WithDir(dir string) *Option {
 	return CmdOption(func(cmd *exec.Cmd) error {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -70,7 +70,7 @@ func WithDir(dir string) *Option {
 	})
 }
 
-// WithStdin - option to set exec.Prepare.Stdout
+// WithStdin - option to set exec.Cmd.Stdout
 func WithStdin(reader io.Reader) *Option {
 	return CmdOption(func(cmd *exec.Cmd) error {
 		cmd.Stdin = reader
@@ -78,23 +78,35 @@ func WithStdin(reader io.Reader) *Option {
 	})
 }
 
-// WithStdout - option to set exec.Prepare.Stdout
+// WithStdout - option to provide a writer to receive exec.Cmd.Stdout
+//              if multiple WithStdout options are received, they are combined
+//              with an io.Multiwriter
 func WithStdout(writer io.Writer) *Option {
 	return CmdOption(func(cmd *exec.Cmd) error {
-		cmd.Stdout = writer
+		if cmd.Stdout == nil {
+			cmd.Stdout = writer
+			return nil
+		}
+		cmd.Stdout = io.MultiWriter(cmd.Stdout, writer)
 		return nil
 	})
 }
 
-// WithStderr - option to set exec.Prepare.Stdout
+// WithStderr - option to provide a writer to receive exec.Cmd.Stderr
+//              if multiple WithStderr options are received, they are combined
+//              with an io.Multiwriter
 func WithStderr(writer io.Writer) *Option {
 	return CmdOption(func(cmd *exec.Cmd) error {
-		cmd.Stderr = writer
+		if cmd.Stderr == nil {
+			cmd.Stderr = writer
+			return nil
+		}
+		cmd.Stderr = io.MultiWriter(cmd.Stderr, writer)
 		return nil
 	})
 }
 
-// WithEnvirons - add entries to exec.Prepare.Env as a series of "key=value" strings
+// WithEnvirons - add entries to exec.Cmd.Env as a series of "key=value" strings
 // Example: WithEnvirons("key1=value1","key2=value2",...)
 func WithEnvirons(environs ...string) *Option {
 	var envs []string
@@ -110,7 +122,7 @@ func WithEnvirons(environs ...string) *Option {
 	return WithEnvKV(envs...)
 }
 
-// WithEnvKV - add entries to exec.Prepare as a series key,value pairs in a list of strings
+// WithEnvKV - add entries to exec.Cmd as a series key,value pairs in a list of strings
 // Existing instances of 'key' will be overwritten
 // Example: WithEnvKV(key1,value2,key2,value2...)
 func WithEnvKV(envs ...string) *Option {
@@ -133,7 +145,7 @@ func WithEnvKV(envs ...string) *Option {
 	})
 }
 
-// WithEnvMap - add entries to exec.Prepare from envMap
+// WithEnvMap - add entries to exec.Cmd from envMap
 // Existing instances of 'key' will be overwritten
 // Example: WithEnvKV(map[string]string{key1:value1,key2:value2})
 func WithEnvMap(envMap map[string]string) *Option {
