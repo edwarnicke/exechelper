@@ -37,7 +37,9 @@ func Start(cmdStr string, options ...*Option) <-chan error {
 	// Set the context
 	var ctx context.Context
 	for _, option := range options {
-		ctx = option.Context
+		if option.Context != nil {
+			ctx = option.Context
+		}
 	}
 
 	// Construct the command args

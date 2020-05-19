@@ -13,6 +13,7 @@ import (
 	"path"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -60,10 +61,17 @@ func TestCombinedOutputWithDir(t *testing.T) {
 
 func TestStartWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	errCh := exechelper.Start("sleep 600", exechelper.WithContext(ctx))
+	errCh := exechelper.Start("sleep 600", exechelper.WithContext(ctx), exechelper.CmdOption(func(cmd *exec.Cmd) error {
+		return nil
+	}))
 	cancel()
-	assert.IsType(t, &exec.ExitError{}, <-errCh) // Because we canceled we will get an exec.ExitError{}
-	assert.Empty(t, errCh)
+	select {
+	case err := <-errCh:
+		assert.IsType(t, &exec.ExitError{}, err) // Because we canceled we will get an exec.ExitError{}
+		assert.Empty(t, errCh)
+	case <-time.After(time.Second):
+		assert.Fail(t, "Failed to cancel context")
+	}
 }
 
 func TestCmdOptionErr(t *testing.T) {
