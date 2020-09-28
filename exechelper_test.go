@@ -12,10 +12,13 @@ import (
 	"os/exec"
 	"path"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/edwarnicke/exechelper"
 )
@@ -68,6 +71,9 @@ func TestStartWithContext(t *testing.T) {
 	select {
 	case err := <-errCh:
 		assert.IsType(t, &exec.ExitError{}, err) // Because we canceled we will get an exec.ExitError{}
+		exitErr := err.(*exec.ExitError)
+		status := exitErr.ProcessState.Sys().(syscall.WaitStatus)
+		assert.Equal(t, status.Signal(), syscall.SIGKILL)
 		assert.Empty(t, errCh)
 	case <-time.After(time.Second):
 		assert.Fail(t, "Failed to cancel context")
@@ -167,4 +173,77 @@ func TestWithEnviron(t *testing.T) {
 func TestWithEnvKV(t *testing.T) {
 	_, err := exechelper.Output("printenv", exechelper.WithEnvKV(key1))
 	assert.Error(t, err)
+}
+
+func TestWithGracePeriodWithContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	graceperiod := 200 * time.Millisecond
+	err := exechelper.Run("go build ./testcmds/afterterm")
+	require.NoError(t, err)
+	errCh := exechelper.Start(
+		fmt.Sprintf("./afterterm %s", graceperiod-50*time.Millisecond),
+		exechelper.WithContext(ctx),
+		exechelper.WithGracePeriod(graceperiod),
+		exechelper.WithStdout(os.Stdout),
+	)
+	time.Sleep(100 * time.Millisecond)
+	cancelTime := time.Now()
+	cancel()
+	ok := true
+	for ok {
+		select {
+		case err, ok = <-errCh:
+			require.NoError(t, err)
+		case <-time.After(graceperiod + 50*time.Millisecond):
+			require.Failf(t, "", "failed to stop within graceperiod(%s): %s", graceperiod+50*time.Millisecond, time.Since(cancelTime))
+			ok = false
+		}
+	}
+}
+
+func TestWithGracePeriodExceeded(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	graceperiod := 200 * time.Millisecond
+	err := exechelper.Run("go build ./testcmds/afterterm")
+	require.NoError(t, err)
+	errCh := exechelper.Start(
+		fmt.Sprintf("./afterterm %s", 2*graceperiod),
+		exechelper.WithContext(ctx),
+		exechelper.WithGracePeriod(graceperiod),
+		exechelper.WithStdout(os.Stdout),
+	)
+	time.Sleep(100 * time.Millisecond)
+	cancelTime := time.Now()
+	cancel()
+	ok := true
+	errOnce := sync.Once{}
+	for ok {
+		select {
+		case err, ok = <-errCh:
+			errOnce.Do(func() {
+				assert.True(t, ok, "at least one real err should be returned on errCh")
+			})
+			if !ok {
+				break
+			}
+			require.IsType(t, &exec.ExitError{}, err) // Because graceperiod is exceeded, we get an ExitError for killed
+			exitErr := err.(*exec.ExitError)
+			status := exitErr.ProcessState.Sys().(syscall.WaitStatus)
+			assert.Equal(t, status.Signal(), syscall.SIGKILL)
+			assert.Empty(t, errCh)
+		case <-time.After(graceperiod + 100*time.Millisecond):
+			require.Failf(t, "", "failed to stop within graceperiod(%s): %s", graceperiod, time.Since(cancelTime))
+			ok = false
+		}
+	}
+}
+
+func TestWithGracePeriodWithoutContext(t *testing.T) {
+	graceperiod := 1 * time.Second
+	errCh := exechelper.Start(
+		"sleep 600",
+		exechelper.WithGracePeriod(graceperiod),
+		exechelper.WithStdout(os.Stdout),
+	)
+	require.Error(t, <-errCh)
 }

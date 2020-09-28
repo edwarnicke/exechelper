@@ -5,6 +5,8 @@ run:
   issues-exit-code: 1
   tests: true
 linters-settings:
+  funlen:
+    lines: 80
   gosec:
     settings:
       exclude: "G204"
@@ -22,8 +24,6 @@ linters-settings:
           - (github.com/sirupsen/logrus.FieldLogger).Fatalf
   golint:
     min-confidence: 0.8
-  goimports:
-    local-prefixes: github.com/networkservicemesh/cmd-forwarder-vppagent
   gocyclo:
     min-complexity: 15
   maligned:

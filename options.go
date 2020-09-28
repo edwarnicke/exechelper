@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 )
@@ -33,6 +34,8 @@ type CmdFunc func(cmd *exec.Cmd) error
 type Option struct {
 	// Context - context (if any) for running the exec.Cmd
 	Context context.Context
+	// SIGTERM grace period
+	GracePeriod time.Duration
 	// CmdFunc to be applied to the exec.Cmd
 	CmdOption CmdFunc
 }
@@ -154,4 +157,10 @@ func WithEnvMap(envMap map[string]string) *Option {
 		envs = append(envs, k, v)
 	}
 	return WithEnvKV(envs...)
+}
+
+// WithGracePeriod - will send a SIGTERM when ctx.Done() and wait up to gracePeriod before
+// SIGKILLing the process.
+func WithGracePeriod(gracePeriod time.Duration) *Option {
+	return &Option{GracePeriod: gracePeriod}
 }
