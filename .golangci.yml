@@ -7,6 +7,16 @@ run:
 linters-settings:
   funlen:
     lines: 80
+  goheader:
+    template-path: ".license/template.txt"
+    values:
+      const:
+        year: 2020
+      regexp:
+        year-range: ((\d\d\d\d-{{year}})|({{year}}))
+        company: .*
+        copyright-holder: Copyright \(c\) {{year-range}} {{company}}\n\n
+        copyright-holders: ({{copyright-holder}})+
   gosec:
     settings:
       exclude: "G204"

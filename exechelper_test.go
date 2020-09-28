@@ -177,11 +177,11 @@ func TestWithEnvKV(t *testing.T) {
 
 func TestWithGracePeriodWithContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	graceperiod := 200 * time.Millisecond
+	graceperiod := 500 * time.Millisecond
 	err := exechelper.Run("go build ./testcmds/afterterm")
 	require.NoError(t, err)
 	errCh := exechelper.Start(
-		fmt.Sprintf("./afterterm %s", graceperiod-50*time.Millisecond),
+		fmt.Sprintf("./afterterm %s", graceperiod-100*time.Millisecond),
 		exechelper.WithContext(ctx),
 		exechelper.WithGracePeriod(graceperiod),
 		exechelper.WithStdout(os.Stdout),
@@ -194,7 +194,7 @@ func TestWithGracePeriodWithContext(t *testing.T) {
 		select {
 		case err, ok = <-errCh:
 			require.NoError(t, err)
-		case <-time.After(graceperiod + 50*time.Millisecond):
+		case <-time.After(graceperiod + 100*time.Millisecond):
 			require.Failf(t, "", "failed to stop within graceperiod(%s): %s", graceperiod+50*time.Millisecond, time.Since(cancelTime))
 			ok = false
 		}
@@ -203,7 +203,7 @@ func TestWithGracePeriodWithContext(t *testing.T) {
 
 func TestWithGracePeriodExceeded(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	graceperiod := 200 * time.Millisecond
+	graceperiod := 500 * time.Millisecond
 	err := exechelper.Run("go build ./testcmds/afterterm")
 	require.NoError(t, err)
 	errCh := exechelper.Start(
