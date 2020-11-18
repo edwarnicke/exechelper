@@ -38,6 +38,9 @@ type Option struct {
 	GracePeriod time.Duration
 	// CmdFunc to be applied to the exec.Cmd
 	CmdOption CmdFunc
+
+	// PostRunOption - CmdFunc to be applied to the exec.Cmd after running
+	PostRunOption CmdFunc
 }
 
 // CmdOption - convenience function for producing an Option that only has an Option.CmdOption
