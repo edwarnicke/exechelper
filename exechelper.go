@@ -35,7 +35,7 @@ func Run(cmdStr string, options ...*Option) error {
 
 // Start - Creates an exec.Cmd cmdStr.  Runs exec.Cmd.Start.
 func Start(cmdStr string, options ...*Option) <-chan error {
-	errCh := make(chan error, 1)
+	errCh := make(chan error, len(options)+1)
 
 	// Extract context from options
 	optionCtx := extractContextFromOptions(options)
@@ -62,22 +62,12 @@ func Start(cmdStr string, options ...*Option) <-chan error {
 
 	cmd, err := constructCommand(cmdCtx, cmdStr, options)
 	if err != nil {
-		errCh <- err
-		close(errCh)
-		if cmdCancel != nil {
-			cmdCancel()
-		}
-		return errCh
+		return postRun(cmd, err, errCh, cmdCancel, options)
 	}
 
 	// Start the *exec.Cmd
 	if err = cmd.Start(); err != nil {
-		errCh <- err
-		close(errCh)
-		if cmdCancel != nil {
-			cmdCancel()
-		}
-		return errCh
+		return postRun(cmd, err, errCh, cmdCancel, options)
 	}
 
 	// By default, the error channel we send any error from the wait to (waitErrCh) is the one we return (errCh)
@@ -102,7 +92,7 @@ func Start(cmdStr string, options ...*Option) <-chan error {
 		go handleGracePeriod(optionCtx, cmd, cmdCancel, graceperiod, waitErrCh, errCh)
 	}
 
-	return errCh
+	return postRun(cmd, nil, errCh, cmdCancel, options)
 }
 
 func extractGracePeriodFromOptions(ctx context.Context, options []*Option) (time.Duration, error) {
@@ -116,6 +106,30 @@ func extractGracePeriodFromOptions(ctx context.Context, options []*Option) (time
 		}
 	}
 	return graceperiod, nil
+}
+
+func postRun(cmd *exec.Cmd, err error, errCh chan error, cmdCancel context.CancelFunc, options []*Option) <-chan error {
+	var hasErr bool
+	if err != nil {
+		errCh <- err
+		hasErr = true
+	}
+	for _, option := range options {
+		if option.PostRunOption != nil {
+			err = option.PostRunOption(cmd)
+			if err != nil {
+				errCh <- err
+				hasErr = true
+			}
+		}
+	}
+	if hasErr {
+		close(errCh)
+		if cmdCancel != nil {
+			cmdCancel()
+		}
+	}
+	return errCh
 }
 
 func extractContextFromOptions(options []*Option) context.Context {

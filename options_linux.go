@@ -21,6 +21,9 @@ package exechelper
 import (
 	"os/exec"
 	"syscall"
+
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netns"
 )
 
 // WithOnDeathSignalChildren - set the signal that will be sent to children of process on processes death
@@ -30,4 +33,24 @@ func WithOnDeathSignalChildren(signal syscall.Signal) *Option {
 		cmd.SysProcAttr.Pdeathsig = signal
 		return nil
 	})
+}
+
+// WithNetNS - run the cmd in the network namespace (netNS) specified by handle.
+func WithNetNS(handle netns.NsHandle) *Option {
+	originalNetNs, err := netns.Get()
+	return &Option{
+		CmdOption: func(cmd *exec.Cmd) error {
+			if err != nil {
+				return errors.Wrap(err, "unable to retrieve original netns.Handle")
+			}
+			return errors.Wrap(netns.Set(handle), "unable to set to requested netns.Handle")
+		},
+		PostRunOption: func(cmd *exec.Cmd) error {
+			if err != nil {
+				_ = netns.Set(originalNetNs)
+				return err
+			}
+			return errors.Wrap(netns.Set(originalNetNs), "unable to set to restore original netns.Handle")
+		},
+	}
 }
